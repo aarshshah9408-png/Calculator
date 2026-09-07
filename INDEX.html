@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Calculator</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Calculator">
+    <link rel="apple-touch-icon" href="icon.png">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Settings Modal */
+        #settings-modal {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 200;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #settings-modal input {
+            font-size: 24px;
+            padding: 10px;
+            width: 80%;
+            margin: 15px 0;
+            background: #222;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        #settings-modal button {
+            font-size: 16px;
+            padding: 12px 20px;
+            background: #ff9f0a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .sensor-status {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        /* Display Screen */
+        .display-container {
+            padding: 24px;
+            text-align: right;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            flex-grow: 1;
+        }
+
+        #display {
+            font-size: 85px;
+            font-weight: 300;
+            line-height: 1;
+            word-break: break-all;
+            word-wrap: break-word;
+        }
+
+        /* Keypad Grid */
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 12px;
+            padding-bottom: 34px;
+        }
+
+        button.key {
+            background-color: #333333;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            font-size: 34px;
+            height: 80px;
+            width: 80px;
+            justify-self: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button.key:active {
+            filter: brightness(1.4);
+        }
+
+        .key.light-gray {
+            background-color: #a5a5a5;
+            color: #000;
+        }
+
+        .key.light-gray:active {
+            background-color: #d8d8d8;
+        }
+
+        .key.orange {
+            background-color: #ff9f0a;
+            color: #fff;
+        }
+
+        .key.zero {
+            grid-column: span 2;
+            width: 172px;
+            border-radius: 40px;
+            justify-content: flex-start;
+            padding-left: 31px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Settings Menu -->
+    <div id="settings-modal">
+        <h2>Magic Settings</h2>
+        <p style="color: #aaa; font-size: 14px; margin-top:5px;">Enter target force number:</p>
+        <input type="number" id="force-input" placeholder="e.g. 4250">
+        <br>
+        <button onclick="requestSensorPermission()" id="sensor-btn" style="background: #333; border: 1px solid #555;">Enable Face-Down Sensor</button>
+        <div class="sensor-status" id="sensor-status">Sensor status: Not Connected</div>
+        <button onclick="saveSettings()">Save & Close</button>
+    </div>
+
+    <!-- Calculator Display -->
+    <div class="display-container">
+        <div id="display">0</div>
+    </div>
+
+    <!-- Keypad Layout -->
+    <div class="keypad">
+        <!-- AC Button holds the Long-Press secret trigger (Hold for 2 seconds) -->
+        <button class="key light-gray" id="clear-btn" 
+            ontouchstart="startLongPress()" ontouchend="cancelLongPress()" 
+            onmousedown="startLongPress()" onmouseup="cancelLongPress()" 
+            onclick="handleClearClick()">AC</button>
+        <button class="key light-gray" onclick="toggleSign()">±</button>
+        <button class="key light-gray" onclick="percentage()">%</button>
+        <button class="key orange" onclick="setOperation('÷')">÷</button>
+
+        <button class="key" onclick="appendNumber('7')">7</button>
+        <button class="key" onclick="appendNumber('8')">8</button>
+        <button class="key" onclick="appendNumber('9')">9</button>
+        <button class="key orange" onclick="setOperation('×')">×</button>
+
+        <button class="key" onclick="appendNumber('4')">4</button>
+        <button class="key" onclick="appendNumber('5')">5</button>
+        <button class="key" onclick="appendNumber('6')">6</button>
+        <button class="key orange" onclick="setOperation('-')">-</button>
+
+        <button class="key" onclick="appendNumber('1')">1</button>
+        <button class="key" onclick="appendNumber('2')">2</button>
+        <button class="key" onclick="appendNumber('3')">3</button>
+        <button class="key orange" onclick="setOperation('+')">+</button>
+
+        <button class="key zero" onclick="appendNumber('0')">0</button>
+        <button class="key" onclick="appendDecimal()">.</button>
+        <button class="key orange" onclick="calculate()">=</button>
+    </div>
+
+    <script>
+        let currentInput = '0';
+        let previousInput = null;
+        let operation = null;
+        let resetScreen = false;
+
+        let forceNumber = localStorage.getItem('magic_force_num') ? parseFloat(localStorage.getItem('magic_force_num')) : null;
+        let isFaceDownTriggered = false;
+        let longPressTimer = null;
+        let isLongPressActive = false;
+
+        // Long Press on AC button handlers (2 seconds)
+        function startLongPress() {
+            isLongPressActive = false;
+            longPressTimer = setTimeout(() => {
+                isLongPressActive = true;
+                document.getElementById('force-input').value = forceNumber !== null ? forceNumber : '';
+                document.getElementById('settings-modal').style.display = 'flex';
+            }, 2000); // 2000ms = 2 seconds
+        }
+
+        function cancelLongPress() {
+            clearTimeout(longPressTimer);
+        }
+
+        function handleClearClick() {
+            if (isLongPressActive) {
+                isLongPressActive = false;
+                return; // Prevent clearing if it was a long press
+            }
+            clearCalculator();
+        }
+
+        function saveSettings() {
+            const val = document.getElementById('force-input').value;
+            if (val !== '') {
+                forceNumber = parseFloat(val);
+                localStorage.setItem('magic_force_num', forceNumber);
+            }
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+
+        // Explicit Sensor Permission for iOS Safari
+        function requestSensorPermission() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            document.getElementById('sensor-status').innerText = "Sensor status: Connected & Active ✅";
+                            document.getElementById('sensor-btn').style.background = '#28a745';
+                            window.addEventListener('deviceorientation', handleOrientation);
+                        } else {
+                            document.getElementById('sensor-status').innerText = "Sensor status: Permission Denied ❌";
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        document.getElementById('sensor-status').innerText = "Sensor status: Error initializing";
+                    });
+            } else {
+                // Non-iOS or older browsers where permission isn't explicitly required via button
+                window.addEventListener('deviceorientation', handleOrientation);
+                document.getElementById('sensor-status').innerText = "Sensor status: Active (No prompt needed)";
+                document.getElementById('sensor-btn').style.background = '#28a745';
+            }
+        }
+
+        // Face-down tilt orientation check
+        function handleOrientation(event) {
+            let beta = event.beta; // Front-to-back tilt (-180 to 180)
+            
+            // When phone is turned completely face down flat, beta is near absolute 180 (e.g., 165 to 180 or -165 to -180)
+            if (beta !== null && Math.abs(beta) >= 160) {
+                if (forceNumber !== null) {
+                    isFaceDownTriggered = true;
+                }
+            }
+        }
+
+        // Calculator Logic
+        function updateDisplay() {
+            const displayElem = document.getElementById('display');
+            if (currentInput.length > 9) {
+                displayElem.innerText = parseFloat(currentInput).toExponential(5);
+            } else {
+                displayElem.innerText = currentInput;
+            }
+            document.getElementById('clear-btn').innerText = (currentInput !== '0' || previousInput !== null) ? 'C' : 'AC';
+        }
+
+        function appendNumber(num) {
+            if (currentInput === '0' || resetScreen) {
+                currentInput = num;
+                resetScreen = false;
+            } else {
+                if (currentInput.length < 9) {
+                    currentInput += num;
+                }
+            }
+            updateDisplay();
+        }
+
+        function appendDecimal() {
+            if (resetScreen) {
+                currentInput = '0.';
+                resetScreen = false;
+                updateDisplay();
+                return;
+            }
+            if (!currentInput.includes('.')) {
+                currentInput += '.';
+                updateDisplay();
+            }
+        }
+
+        function clearCalculator() {
+            currentInput = '0';
+            previousInput = null;
+            operation = null;
+            isFaceDownTriggered = false;
+            updateDisplay();
+        }
+
+        function toggleSign() {
+            currentInput = (parseFloat(currentInput) * -1).toString();
+            updateDisplay();
+        }
+
+        function percentage() {
+            currentInput = (parseFloat(currentInput) / 100).toString();
+            updateDisplay();
+        }
+
+        function setOperation(op) {
+            if (operation !== null) calculate();
+            previousInput = parseFloat(currentInput);
+            operation = op;
+            resetScreen = true;
+        }
+
+        function calculate() {
+            if (operation === null || previousInput === null) return;
+            
+            if (isFaceDownTriggered && forceNumber !== null) {
+                let neededValue;
+                if (operation === '+') {
+                    neededValue = forceNumber - previousInput;
+                } else if (operation === '×') {
+                    neededValue = forceNumber / previousInput;
+                } else {
+                    neededValue = forceNumber;
+                }
+                currentInput = neededValue.toString();
+                isFaceDownTriggered = false; 
+            }
+
+            let computation;
+            const prev = previousInput;
+            const current = parseFloat(currentInput);
+
+            switch (operation) {
+                case '+': computation = prev + current; break;
+                case '-': computation = prev - current; break;
+                case '×': computation = prev * current; break;
+                case '÷': computation = current === 0 ? 'Error' : prev / current; break;
+                default: return;
+            }
+
+            currentInput = computation.toString();
+            operation = null;
+            previousInput = null;
+            resetScreen = true;
+            updateDisplay();
+        }
+    </script>
+</body>
+</html>
