@@ -148,8 +148,9 @@
             font-size: 75px;
             font-weight: 300;
             line-height: 1;
-            word-break: break-all;
-            word-wrap: break-word;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: font-size 0.1s ease;
         }
 
         /* Keypad Grid (Strict 4x5 layout matching native iOS) */
@@ -314,7 +315,7 @@
             dot.style.opacity = '1';
             setTimeout(() => {
                 dot.style.opacity = '0';
-            }, 1000); // Stays visible for exactly 1 second
+            }, 1000);
         }
 
         function startLongPress() {
@@ -383,10 +384,25 @@
             const displayElem = document.getElementById('display');
             const historyElem = document.getElementById('history-display');
             
-            if (currentInput.length > 9) {
-                displayElem.innerText = parseFloat(currentInput).toExponential(5);
+            // Cap inputs at 12 digits max to keep screen stability
+            if (currentInput.replace(/[^0-9]/g, '').length > 12) {
+                currentInput = currentInput.slice(0, 12);
+            }
+
+            displayElem.innerText = currentInput;
+
+            // Dynamic font scaling like native iOS Calculator
+            let length = currentInput.length;
+            if (length <= 6) {
+                displayElem.style.fontSize = '75px';
+            } else if (length === 7) {
+                displayElem.style.fontSize = '68px';
+            } else if (length === 8) {
+                displayElem.style.fontSize = '60px';
+            } else if (length === 9) {
+                displayElem.style.fontSize = '54px';
             } else {
-                displayElem.innerText = currentInput;
+                displayElem.style.fontSize = '48px'; // 10 to 12 digits
             }
 
             historyElem.innerText = historyString;
@@ -400,7 +416,7 @@
                 currentInput = num;
                 resetScreen = false;
             } else {
-                if (currentInput.length < 9) {
+                if (currentInput.replace(/[^0-9]/g, '').length < 12) {
                     currentInput += num;
                 }
             }
