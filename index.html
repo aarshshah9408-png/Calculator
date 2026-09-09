@@ -32,6 +32,21 @@
             position: relative;
         }
 
+        /* Tiny Secret Indicator Dot (Top-left corner, next to history icon) */
+        #secret-dot {
+            position: absolute;
+            top: 20px;
+            left: 8px;
+            width: 6px;
+            height: 6px;
+            background-color: #30d158; /* Subtle iOS green */
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 100;
+            pointer-events: none;
+        }
+
         /* Top Corner Decorative iOS Header Buttons */
         .top-header {
             position: absolute;
@@ -106,24 +121,6 @@
             font-size: 13px;
             color: #888;
             margin-bottom: 15px;
-        }
-
-        /* Discreet Sensor Status Indicator (Flashes green briefly on double-tap) */
-        #sensor-toast {
-            position: absolute;
-            top: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(40, 167, 69, 0.9);
-            color: #fff;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 100;
-            pointer-events: none;
         }
 
         /* Display Screen Container */
@@ -206,8 +203,8 @@
 </head>
 <body>
 
-    <!-- Subtle popup toast to confirm motion activation -->
-    <div id="sensor-toast">Magic Sensor Armed 🟢</div>
+    <!-- Tiny secret visual indicator dot -->
+    <div id="secret-dot"></div>
 
     <!-- Top Corner Header Buttons replicating native iOS UI -->
     <div class="top-header">
@@ -225,7 +222,7 @@
         <p style="color: #aaa; font-size: 14px; margin-top:5px;">Enter target force number:</p>
         <input type="number" id="force-input" placeholder="e.g. 4250">
         <br>
-        <div class="sensor-status">Double-tap anywhere on screen to arm sensor.</div>
+        <div class="sensor-status">Double-tap anywhere to arm discretely.</div>
         <button onclick="saveSettings()">Save & Close</button>
     </div>
 
@@ -287,14 +284,12 @@
             let currentTime = new Date().getTime();
             let tapLength = currentTime - lastTapTime;
             
-            // If tapped twice within 300ms, arm the sensor
             if (tapLength < 300 && tapLength > 0) {
                 activateMotionSensor();
             }
             lastTapTime = currentTime;
         });
 
-        // Fallback for mouse double-click during testing
         document.addEventListener('dblclick', () => {
             activateMotionSensor();
         });
@@ -304,22 +299,22 @@
                 DeviceOrientationEvent.requestPermission().then(response => {
                     if (response === 'granted') {
                         window.addEventListener('deviceorientation', handleOrientation);
-                        showSensorToast();
+                        flashSecretDot();
                     }
                 }).catch(() => {});
             } else {
                 window.addEventListener('deviceorientation', handleOrientation);
-                showSensorToast();
+                flashSecretDot();
             }
         }
 
-        function showSensorToast() {
+        function flashSecretDot() {
             sensorArmed = true;
-            let toast = document.getElementById('sensor-toast');
-            toast.style.opacity = '1';
+            let dot = document.getElementById('secret-dot');
+            dot.style.opacity = '1';
             setTimeout(() => {
-                toast.style.opacity = '0';
-            }, 2000);
+                dot.style.opacity = '0';
+            }, 1000); // Stays visible for exactly 1 second
         }
 
         function startLongPress() {
@@ -354,7 +349,6 @@
 
         function handleOrientation(event) {
             let beta = event.beta;
-            // beta < -150 or > 150 detects when the phone is laid face-down flat
             if (beta !== null && Math.abs(beta) >= 150) {
                 if (forceNumber !== null && !isFaceDownTriggered) {
                     isFaceDownTriggered = true;
