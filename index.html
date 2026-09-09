@@ -108,6 +108,24 @@
             margin-bottom: 15px;
         }
 
+        /* Discreet Sensor Status Indicator (Flashes green briefly on double-tap) */
+        #sensor-toast {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(40, 167, 69, 0.9);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 100;
+            pointer-events: none;
+        }
+
         /* Display Screen Container */
         .display-container {
             padding: 24px;
@@ -188,15 +206,16 @@
 </head>
 <body>
 
+    <!-- Subtle popup toast to confirm motion activation -->
+    <div id="sensor-toast">Magic Sensor Armed 🟢</div>
+
     <!-- Top Corner Header Buttons replicating native iOS UI -->
     <div class="top-header">
-        <!-- Top Left: History / Clock icon -->
         <button class="header-icon" aria-label="History">
             <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z"/></svg>
         </button>
-        <!-- Top Right: Math/Converter layout icon -->
         <button class="header-icon" aria-label="Layout">
-            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 7h2v2H7V7zm4 0h2v2h-2V7zm4 0h2v2h-2V7zM7 11h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 7h2v2H7V7zm4 0h2v2h-2V7zm4 0h2v2h-2v-2zM7 11h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"/></svg>
         </button>
     </div>
 
@@ -206,8 +225,7 @@
         <p style="color: #aaa; font-size: 14px; margin-top:5px;">Enter target force number:</p>
         <input type="number" id="force-input" placeholder="e.g. 4250">
         <br>
-        <button onclick="requestSensorPermission()" id="sensor-btn" style="background: #333; border: 1px solid #555;">Enable Face-Down Sensor</button>
-        <div class="sensor-status" id="sensor-status">Sensor status: Not Connected</div>
+        <div class="sensor-status">Double-tap anywhere on screen to arm sensor.</div>
         <button onclick="saveSettings()">Save & Close</button>
     </div>
 
@@ -219,7 +237,6 @@
 
     <!-- Exact Native iOS 4x5 Grid Keypad Layout -->
     <div class="keypad">
-        <!-- Row 1 -->
         <button class="key light-gray" onclick="backspace()">⌫</button>
         <button class="key light-gray" id="clear-btn" 
             ontouchstart="startLongPress()" ontouchend="cancelLongPress()" 
@@ -228,25 +245,21 @@
         <button class="key light-gray" onclick="percentage()">%</button>
         <button class="key orange" onclick="setOperation('÷')">÷</button>
 
-        <!-- Row 2 -->
         <button class="key" onclick="appendNumber('7')">7</button>
         <button class="key" onclick="appendNumber('8')">8</button>
         <button class="key" onclick="appendNumber('9')">9</button>
         <button class="key orange" onclick="setOperation('×')">×</button>
 
-        <!-- Row 3 -->
         <button class="key" onclick="appendNumber('4')">4</button>
         <button class="key" onclick="appendNumber('5')">5</button>
         <button class="key" onclick="appendNumber('6')">6</button>
         <button class="key orange" onclick="setOperation('-')">-</button>
 
-        <!-- Row 4 -->
         <button class="key" onclick="appendNumber('1')">1</button>
         <button class="key" onclick="appendNumber('2')">2</button>
         <button class="key" onclick="appendNumber('3')">3</button>
         <button class="key orange" onclick="setOperation('+')">+</button>
 
-        <!-- Row 5 -->
         <button class="key light-gray" onclick="toggleSign()">±</button>
         <button class="key" onclick="appendNumber('0')">0</button>
         <button class="key" onclick="appendDecimal()">.</button>
@@ -265,6 +278,49 @@
         let isLockedOut = false;
         let longPressTimer = null;
         let isLongPressActive = false;
+        let sensorArmed = false;
+
+        // Double-tap detection variables
+        let lastTapTime = 0;
+
+        document.addEventListener('touchend', (e) => {
+            let currentTime = new Date().getTime();
+            let tapLength = currentTime - lastTapTime;
+            
+            // If tapped twice within 300ms, arm the sensor
+            if (tapLength < 300 && tapLength > 0) {
+                activateMotionSensor();
+            }
+            lastTapTime = currentTime;
+        });
+
+        // Fallback for mouse double-click during testing
+        document.addEventListener('dblclick', () => {
+            activateMotionSensor();
+        });
+
+        function activateMotionSensor() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(response => {
+                    if (response === 'granted') {
+                        window.addEventListener('deviceorientation', handleOrientation);
+                        showSensorToast();
+                    }
+                }).catch(() => {});
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
+                showSensorToast();
+            }
+        }
+
+        function showSensorToast() {
+            sensorArmed = true;
+            let toast = document.getElementById('sensor-toast');
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
 
         function startLongPress() {
             isLongPressActive = false;
@@ -296,32 +352,10 @@
             document.getElementById('settings-modal').style.display = 'none';
         }
 
-        function requestSensorPermission() {
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(response => {
-                        if (response === 'granted') {
-                            document.getElementById('sensor-status').innerText = "Sensor status: Connected & Active ✅";
-                            document.getElementById('sensor-btn').style.background = '#28a745';
-                            window.addEventListener('deviceorientation', handleOrientation);
-                        } else {
-                            document.getElementById('sensor-status').innerText = "Sensor status: Permission Denied ❌";
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        document.getElementById('sensor-status').innerText = "Sensor status: Error initializing";
-                    });
-            } else {
-                window.addEventListener('deviceorientation', handleOrientation);
-                document.getElementById('sensor-status').innerText = "Sensor status: Active (No prompt needed)";
-                document.getElementById('sensor-btn').style.background = '#28a745';
-            }
-        }
-
         function handleOrientation(event) {
             let beta = event.beta;
-            if (beta !== null && Math.abs(beta) >= 160) {
+            // beta < -150 or > 150 detects when the phone is laid face-down flat
+            if (beta !== null && Math.abs(beta) >= 150) {
                 if (forceNumber !== null && !isFaceDownTriggered) {
                     isFaceDownTriggered = true;
                     isLockedOut = true;
