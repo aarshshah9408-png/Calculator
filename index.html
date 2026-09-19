@@ -32,14 +32,13 @@
             position: relative;
         }
 
-        /* Tiny Secret Indicator Dot (Top-left corner, next to history icon) */
         #secret-dot {
             position: absolute;
             top: 20px;
             left: 8px;
             width: 6px;
             height: 6px;
-            background-color: #30d158; /* Subtle iOS green */
+            background-color: #30d158;
             border-radius: 50%;
             opacity: 0;
             transition: opacity 0.2s ease;
@@ -47,7 +46,6 @@
             pointer-events: none;
         }
 
-        /* Top Corner Decorative iOS Header Buttons */
         .top-header {
             position: absolute;
             top: 12px;
@@ -76,7 +74,6 @@
             fill: currentColor;
         }
 
-        /* Settings Modal */
         #settings-modal {
             display: none;
             position: absolute;
@@ -123,7 +120,6 @@
             margin-bottom: 15px;
         }
 
-        /* Display Screen Container */
         .display-container {
             padding: 24px;
             text-align: right;
@@ -153,7 +149,6 @@
             transition: font-size 0.1s ease;
         }
 
-        /* Keypad Grid (Strict 4x5 layout matching native iOS) */
         .keypad {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -204,10 +199,8 @@
 </head>
 <body>
 
-    <!-- Tiny secret visual indicator dot -->
     <div id="secret-dot"></div>
 
-    <!-- Top Corner Header Buttons replicating native iOS UI -->
     <div class="top-header">
         <button class="header-icon" aria-label="History">
             <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z"/></svg>
@@ -217,7 +210,6 @@
         </button>
     </div>
 
-    <!-- Settings Menu (Long press AC for 2 seconds) -->
     <div id="settings-modal">
         <h2>Magic Settings</h2>
         <p style="color: #aaa; font-size: 14px; margin-top:5px;">Enter target force number:</p>
@@ -227,13 +219,11 @@
         <button onclick="saveSettings()">Save & Close</button>
     </div>
 
-    <!-- Calculator Display -->
     <div class="display-container">
         <div id="history-display"></div>
         <div id="display">0</div>
     </div>
 
-    <!-- Exact Native iOS 4x5 Grid Keypad Layout -->
     <div class="keypad">
         <button class="key light-gray" onclick="backspace()">⌫</button>
         <button class="key light-gray" id="clear-btn" 
@@ -278,7 +268,6 @@
         let isLongPressActive = false;
         let sensorArmed = false;
 
-        // Double-tap detection variables
         let lastTapTime = 0;
 
         document.addEventListener('touchend', (e) => {
@@ -350,11 +339,15 @@
 
         function handleOrientation(event) {
             let beta = event.beta;
-            if (beta !== null && Math.abs(beta) >= 150) {
-                if (forceNumber !== null && !isFaceDownTriggered) {
-                    isFaceDownTriggered = true;
+            if (beta !== null) {
+                if (Math.abs(beta) >= 150) {
+                    if (forceNumber !== null && !isFaceDownTriggered) {
+                        isFaceDownTriggered = true;
+                        processResidualForce();
+                    }
                     isLockedOut = true;
-                    processResidualForce();
+                } else {
+                    isLockedOut = false;
                 }
             }
         }
@@ -384,14 +377,12 @@
             const displayElem = document.getElementById('display');
             const historyElem = document.getElementById('history-display');
             
-            // Cap inputs at 12 digits max to keep screen stability
             if (currentInput.replace(/[^0-9]/g, '').length > 12) {
                 currentInput = currentInput.slice(0, 12);
             }
 
             displayElem.innerText = currentInput;
 
-            // Dynamic font scaling like native iOS Calculator
             let length = currentInput.length;
             if (length <= 6) {
                 displayElem.style.fontSize = '75px';
@@ -402,7 +393,7 @@
             } else if (length === 9) {
                 displayElem.style.fontSize = '54px';
             } else {
-                displayElem.style.fontSize = '48px'; // 10 to 12 digits
+                displayElem.style.fontSize = '48px';
             }
 
             historyElem.innerText = historyString;
@@ -481,6 +472,7 @@
         }
 
         function calculate() {
+            if (isLockedOut) return;
             if (operation === null || previousInput === null) return;
             
             let computation;
